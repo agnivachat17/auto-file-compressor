@@ -1,0 +1,6 @@
+# PDF Auto-Compressor — Python dependencies
+# Install with:  pip install -r requirements.txt
+
+watchdog==4.0.1       # filesystem monitoring (very lightweight, cross-platform)
+pypdf==4.3.1          # PDF reading/writing (pure Python, no external tools needed)
+Pillow==10.3.0        # image processing for re-compressing embedded images
