@@ -1,8 +1,25 @@
-# PDF Auto-Compressor 📄→📦
-### A beginner-friendly Windows background automation tool
+# Auto File Compressor
+### Real-time local file compression automation for Windows
+
+![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![Platform](https://img.shields.io/badge/Platform-Windows-green)
+![Status](https://img.shields.io/badge/Status-Active-success)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
 Watches a folder for new PDF files, compresses them with high visual quality,
 and saves them to an output folder — automatically, silently, forever.
+
+## 💡 Why I Built This
+
+I wanted a lightweight local automation tool that could continuously compress files without relying on cloud services or manual processing.
+
+Most existing tools were either:
+- online only
+- bloated
+- subscription-based
+- not automated
+
+So I decided to build my own.
 
 ---
 
@@ -28,10 +45,44 @@ FolderA/                        FolderB/
 
 ---
 
+## 🚧 Planned Features
+
+- JPG / PNG compression
+- Video compression
+- Drag-and-drop UI
+- Compression presets
+- EXE installer
+- Batch processing
+
+---
+
+## ⚡ Automation Features
+
+This project was designed to run fully autonomously in the background with minimal user interaction.
+
+Current automation capabilities include:
+
+- Silent background execution using `pythonw`
+- Windows startup automation via `shell:startup`
+- Optional Task Scheduler integration
+- Standalone executable support using PyInstaller
+- Continuous real-time folder monitoring
+- Automatic file detection and processing
+- Logging system for debugging and monitoring
+- Lightweight idle performance (~0% CPU usage)
+
+The system has been repeatedly tested across:
+- system restarts
+- startup execution
+- silent background runs
+- EXE-based deployment workflows
+
+---
+
 ## 📁 Project Structure
 
 ```
-pdf_watcher/
+auto-file-compressor/
 │
 ├── watcher.py          ← Main program (monitoring + compression logic)
 ├── config.py           ← YOUR settings (edit folder paths here)
