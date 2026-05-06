@@ -1,5 +1,5 @@
 """
-PDF Auto-Compressor — watcher.py
+SmartCompress — watcher.py
 =================================
 Monitors Folder A for new PDF files, compresses them with high visual quality,
 and saves them as comp_<original>.pdf into Folder B.
@@ -42,6 +42,19 @@ import io
 
 # ── Load user config ──────────────────────────────────────────────────────────
 import config
+
+# ── Supported file types ─────────────────────────────────────────────────────
+SUPPORTED_IMAGE_EXTENSIONS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+}
+
+SUPPORTED_EXTENSIONS = {
+    ".pdf",
+    *SUPPORTED_IMAGE_EXTENSIONS,
+}
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 LOG_FILE = Path(__file__).parent / "logs" / "watcher.log"
@@ -295,6 +308,73 @@ def _compress_with_pypdf(src: Path, dst: Path) -> bool:
             dst.unlink()
         return False
 
+# ── Image compression ─────────────────────────────────────────────────────────
+def compress_image(src: Path, dst: Path) -> bool:
+    """
+    Compress image files while preserving original format.
+    Supported:
+      - JPG / JPEG
+      - PNG
+      - WEBP
+    """
+
+    try:
+        src_kb = src.stat().st_size / 1024
+        ext = src.suffix.lower()
+
+        with Image.open(src) as img:
+
+            # Convert unsupported alpha modes safely
+            if img.mode in ("RGBA", "P"):
+                if ext in (".jpg", ".jpeg"):
+                    background = Image.new("RGB", img.size, (255, 255, 255))
+                    background.paste(img, mask=img.split()[-1] if img.mode == "RGBA" else None)
+                    img = background
+
+            save_kwargs = {
+                "optimize": True,
+            }
+
+            # JPEG settings
+            if ext in (".jpg", ".jpeg"):
+                save_kwargs.update({
+                    "quality": config.JPEG_QUALITY,
+                    "progressive": True,
+                })
+
+            # PNG settings
+            elif ext == ".png":
+                save_kwargs.update({
+                    "compress_level": 9,
+                })
+
+            # WEBP settings
+            elif ext == ".webp":
+                save_kwargs.update({
+                    "quality": config.JPEG_QUALITY,
+                    "method": 6,
+                })
+
+            img.save(dst, **save_kwargs)
+
+        dst_kb = dst.stat().st_size / 1024
+        saving = (1 - dst_kb / src_kb) * 100 if src_kb > 0 else 0
+
+        log.info(
+            f"  ✔ Image compressed: {src.name}  "
+            f"{src_kb:.1f} KB → {dst_kb:.1f} KB  "
+            f"({saving:.1f}% smaller)"
+        )
+
+        return True
+
+    except Exception as e:
+        log.error(f"  ✘ Image compression failed for {src.name}: {e}")
+
+        if dst.exists():
+            dst.unlink()
+
+        return False
 
 # ── Core compression logic (engine dispatcher) ────────────────────────────────
 def compress_pdf(src: Path, dst: Path) -> bool:
@@ -346,19 +426,21 @@ def compress_pdf(src: Path, dst: Path) -> bool:
     return True
 
 
-# ── Process a single PDF file ─────────────────────────────────────────────────
-def process_pdf(src_path: Path, folder_b: Path) -> None:
+# ── Process a single supported file ───────────────────────────────────────────
+def process_file(src_path: Path, folder_b: Path) -> None:
     """
-    Full pipeline for one PDF:
-      1. Validate (is PDF? already compressed? exists?)
-      2. Wait for file to be fully written
-      3. Compress
-      4. Save as comp_<name>.pdf in Folder B
+    Process supported files:
+      - PDF
+      - JPG / JPEG
+      - PNG
+      - WEBP
     """
-    name = src_path.name
 
-    # Skip non-PDFs (belt-and-suspenders guard, event handler already filters)
-    if src_path.suffix.lower() != ".pdf":
+    name = src_path.name
+    ext = src_path.suffix.lower()
+
+    # Skip unsupported files
+    if ext not in SUPPORTED_EXTENSIONS:
         return
 
     # Skip already-compressed files
@@ -368,28 +450,34 @@ def process_pdf(src_path: Path, folder_b: Path) -> None:
 
     log.info(f"→ Detected: {name}")
 
-    # Wait for the file to finish being written/copied
+    # Wait for file to finish copying/writing
     if not wait_for_file_ready(src_path):
         log.error(f"  File never became stable, skipping: {name}")
         return
 
-    # Destination path
+    # Output path
     dst_name = f"comp_{name}"
     dst_path = folder_b / dst_name
 
-    # Don't re-compress if output already exists (e.g. watcher restarted)
+    # Skip if already exists
     if dst_path.exists():
         log.info(f"  Output already exists, skipping: {dst_name}")
         return
 
-    compress_pdf(src_path, dst_path)
+    # ── PDF ──────────────────────────────────────────────────────────────
+    if ext == ".pdf":
+        compress_pdf(src_path, dst_path)
+
+    # ── Images ───────────────────────────────────────────────────────────
+    elif ext in SUPPORTED_IMAGE_EXTENSIONS:
+        compress_image(src_path, dst_path)
 
 
 # ── Watchdog event handler ────────────────────────────────────────────────────
-class PDFHandler(FileSystemEventHandler):
+class FileHandler(FileSystemEventHandler):
     """
     Receives filesystem events from watchdog.
-    Only reacts to file creation/move events for PDF files in Folder A.
+    Only reacts to supported compressible file types in Folder A.
     """
     def __init__(self, folder_b: Path):
         super().__init__()
@@ -397,8 +485,12 @@ class PDFHandler(FileSystemEventHandler):
 
     def _handle(self, event_path: str) -> None:
         path = Path(event_path)
-        if path.suffix.lower() == ".pdf" and not path.name.lower().startswith("comp_"):
-            process_pdf(path, self.folder_b)
+    
+        if (
+            path.suffix.lower() in SUPPORTED_EXTENSIONS
+            and not path.name.lower().startswith("comp_")
+        ):
+            process_file(path, self.folder_b)
 
     def on_created(self, event):
         """Fired when a new file appears (including drag-and-drop, download, copy)."""
@@ -417,20 +509,27 @@ def scan_existing(folder_a: Path, folder_b: Path) -> None:
     On startup, process any PDFs already sitting in Folder A
     that haven't been compressed yet.
     """
-    log.info("Scanning Folder A for existing PDFs...")
-    pdfs = sorted(folder_a.glob("*.pdf"))
-    if not pdfs:
-        log.info("  No existing PDFs found.")
+    log.info("Scanning Folder A for existing supported files...")
+
+    files = sorted(
+        [
+           f for f in folder_a.iterdir()
+            if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
+        ]
+    )
+    if not files:
+        log.info("  No supported files found.")
         return
-    for pdf in pdfs:
-        if not pdf.name.lower().startswith("comp_"):
-            process_pdf(pdf, folder_b)
+
+    for file in files:
+        if not file.name.lower().startswith("comp_"):
+            process_file(file, folder_b)
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 def main():
     log.info("=" * 60)
-    log.info("PDF Auto-Compressor starting up")
+    log.info("SmartCompress starting up")
     log.info("=" * 60)
 
     # ── Resolve and validate folders ──────────────────────────────────────
@@ -453,13 +552,13 @@ def main():
     scan_existing(folder_a, folder_b)
 
     # ── Set up watchdog observer ───────────────────────────────────────────
-    handler  = PDFHandler(folder_b)
+    handler  = FileHandler(folder_b)
     observer = Observer()
     # recursive=False → only watch the top level of Folder A (not sub-folders)
     observer.schedule(handler, str(folder_a), recursive=False)
     observer.start()
 
-    log.info("Watching for new PDFs... (press Ctrl+C to stop)")
+    log.info("Watching for supported files... (press Ctrl+C to stop)")
 
     try:
         while True:
@@ -469,7 +568,7 @@ def main():
     finally:
         observer.stop()
         observer.join()
-        log.info("PDF Auto-Compressor stopped.")
+        log.info("SmartCompress stopped.")
 
 
 if __name__ == "__main__":

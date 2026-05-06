@@ -12,8 +12,8 @@ Everything else is optional.
 #       r"C:\Users\YourName\Documents\Inbox"
 #       "C:/Users/YourName/Downloads/PDFs"
 
-FOLDER_A = r"E:\PDF_IN"
-FOLDER_B = r"E:\PDF_OUT"
+FOLDER_A = r"E:\INPUT"
+FOLDER_B = r"E:\OUTPUT"
 
 
 # ── OPTIONAL: Compression quality ─────────────────────────────────────────────

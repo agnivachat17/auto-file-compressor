@@ -1,12 +1,12 @@
-# Auto File Compressor
-### Real-time local file compression automation for Windows
+# SmartCompress
+### Real-time automatic multi-format file compression for Windows
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Platform](https://img.shields.io/badge/Platform-Windows-green)
 ![Status](https://img.shields.io/badge/Status-Active-success)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-Watches a folder for new PDF files, compresses them with high visual quality,
+Watches a folder for supported files, compresses them with high visual quality,
 and saves them to an output folder — automatically, silently, forever.
 
 ## 💡 Why I Built This
@@ -26,28 +26,34 @@ So I decided to build my own.
 ## ✨ What It Does
 
 ```
-FolderA/                        FolderB/
-  ├── report.pdf      ──────►   ├── comp_report.pdf      (compressed ✔)
-  ├── invoice.pdf     ──────►   ├── comp_invoice.pdf     (compressed ✔)
-  ├── comp_old.pdf    (skip)    └── ...
-  └── notes.txt       (skip)
+INPUT/                               OUTPUT/
+  ├── report.pdf        ──────►      ├── comp_report.pdf       ✔ compressed
+  ├── image.jpg         ──────►      ├── comp_image.jpg        ✔ compressed
+  ├── photo.png         ──────►      ├── comp_photo.png        ✔ compressed
+  ├── comp_old.pdf      (skip)       └── ...
+  └── notes.txt         (ignore)
 ```
 
-- **Monitors Folder A** continuously using OS-level file events (no polling loop)
-- **Processes existing PDFs** in Folder A on startup
+- **Monitors INPUT** continuously using OS-level file events (no polling loop)
+- **Processes existing supported files** in INPUT on startup
 - **Waits for file transfers** to finish before compressing
-- **Compresses** embedded images to JPEG quality 85 (visually excellent)
-- **Renames** output as `comp_<originalname>.pdf`
-- **Saves** to Folder B, leaving originals untouched
-- **Ignores** non-PDFs and files starting with `comp_` silently
-- **Logs** everything to `logs/watcher.log`
-- **Uses ~0% CPU** while idle (event-driven, not polling)
+- **Supports multiple formats**:
+  - PDF
+  - JPG / JPEG
+  - PNG
+  - WEBP
+- **Compresses PDFs** with high visual quality optimisation
+- **Compresses images** while preserving original format
+- **Renames** output as `comp_<originalname>`
+- **Saves** compressed files to OUTPUT, leaving originals untouched
+- **Ignores** unsupported files and already-compressed files silently
+- **Logs** all activity to `logs/watcher.log`
+- **Uses ~0% CPU** while idle (fully event-driven)
 
 ---
 
 ## 🚧 Planned Features
 
-- JPG / PNG compression
 - Video compression
 - Drag-and-drop UI
 - Compression presets
@@ -82,7 +88,7 @@ The system has been repeatedly tested across:
 ## 📁 Project Structure
 
 ```
-auto-file-compressor/
+SmartCompress/
 │
 ├── watcher.py          ← Main program (monitoring + compression logic)
 ├── config.py           ← YOUR settings (edit folder paths here)
@@ -121,9 +127,9 @@ You should see something like `Python 3.12.3`.
 
 ### Step 2 — Download / Place the Project
 
-Save the entire `pdf_watcher` folder somewhere permanent, for example:
+Save the entire `SmartCompress` folder somewhere permanent, for example:
 ```
-C:\Users\YourName\Documents\pdf_watcher\
+C:\Users\YourName\Documents\SmartCompress\
 ```
 
 ---
@@ -135,8 +141,8 @@ Open `config.py` in Notepad (right-click → Open With → Notepad).
 Change these two lines to your actual folder paths:
 
 ```python
-FOLDER_A = r"C:\Users\YourName\Documents\FolderA"   # watch this folder
-FOLDER_B = r"C:\Users\YourName\Documents\FolderB"   # save compressed files here
+FOLDER_A = r"C:\Users\YourName\Documents\INPUT"   # watch this folder
+FOLDER_B = r"C:\Users\YourName\Documents\OUTPUT"   # save compressed files here
 ```
 
 **Tips:**
@@ -158,7 +164,7 @@ the first time you run it.
 
 **Or** install manually via Command Prompt:
 ```
-cd C:\Users\YourName\Documents\pdf_watcher
+cd C:\Users\YourName\Documents\SmartCompress
 pip install -r requirements.txt
 ```
 
@@ -178,12 +184,12 @@ Double-click `run.bat`
 
 You'll see live output like:
 ```
-2024-01-15 10:30:00  [INFO]  PDF Auto-Compressor starting up
-2024-01-15 10:30:00  [INFO]  Watching : C:\Users\You\Documents\FolderA
-2024-01-15 10:30:00  [INFO]  Output   : C:\Users\You\Documents\FolderB
+2024-01-15 10:30:00  [INFO]  SmartCompress starting up
+2024-01-15 10:30:00  [INFO]  Watching : C:\Users\You\Documents\INPUT
+2024-01-15 10:30:00  [INFO]  Output   : C:\Users\You\Documents\OUTPUT
 2024-01-15 10:30:00  [INFO]  → Detected: quarterly_report.pdf
 2024-01-15 10:30:01  [INFO]    ✔ Compressed: 4.2 MB → 1.8 MB (57.1% smaller)
-2024-01-15 10:30:01  [INFO]  Watching for new PDFs... (press Ctrl+C to stop)
+2024-01-15 10:30:01  [INFO]  Watching for supported files... (press Ctrl+C to stop)
 ```
 
 **Option B — Silent background (no window):**
@@ -196,14 +202,19 @@ Check `logs/watcher.log` to confirm it's working.
 
 ## 🔄 Run Automatically on Windows Startup
 
+> Recommended method: Windows Task Scheduler for silent startup automation.
+>
+> `startup.vbs` is included as optional legacy support.
+
 To start the compressor automatically every time you log into Windows:
+
 
 1. Press `Win+R`, type `shell:startup`, press Enter
    → A folder opens (this is your Startup folder)
 
 2. Open `startup.vbs` in Notepad and change this line:
    ```vbscript
-   SCRIPT_PATH = "C:\Users\YourName\Documents\pdf_watcher\run_silent.pyw"
+   SCRIPT_PATH = "C:\Users\YourName\Documents\SmartCompress\run_silent.pyw"
    ```
    to match where you saved the project.
 
@@ -232,18 +243,18 @@ pip install pyinstaller
 
 ### Build:
 ```
-cd C:\Users\YourName\Documents\pdf_watcher
+cd C:\Users\YourName\Documents\SmartCompress
 pyinstaller build_exe.spec
 ```
 
 ### Result:
 ```
-dist\PDFAutoCompressor\PDFAutoCompressor.exe
+dist\watcher\watcher.exe
 ```
 
-Share the entire `dist\PDFAutoCompressor\` folder. The recipient just needs to:
+Share the entire `dist\watcher\` folder. The recipient just needs to:
 1. Edit `config.py` inside the folder with their paths
-2. Double-click `PDFAutoCompressor.exe`
+2. Double-click `watcher.exe`
 
 No Python installation required on their machine. ✅
 
@@ -257,7 +268,7 @@ Example log output:
 ```
 2024-01-15 09:00:00  [INFO]  ============================
 2024-01-15 09:00:00  [INFO]  PDF Auto-Compressor starting
-2024-01-15 09:00:00  [INFO]  Watching : C:\...\FolderA
+2024-01-15 09:00:00  [INFO]  Watching : C:\...\INPUT
 2024-01-15 09:00:00  [INFO]  → Detected: contract.pdf
 2024-01-15 09:00:01  [INFO]    ✔ Compressed: contract.pdf  8.3 MB → 2.1 MB (74.7% smaller)
 2024-01-15 09:05:12  [INFO]  → Detected: scan.pdf

@@ -11,7 +11,7 @@
 
 ' ── EDIT THIS PATH ────────────────────────────────────────────────────────────
 Dim SCRIPT_PATH
-SCRIPT_PATH = "C:\Users\agniv\Downloads\pdf_auto_compressor\pdf_watcher\run_silent.pyw"
+SCRIPT_PATH = "E:\SmartCompress\run_silent.pyw"
 ' ─────────────────────────────────────────────────────────────────────────────
 
 Dim WShell
